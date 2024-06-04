@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>zk-SNARK Factorization Proof</title>
+</head>
+<body>
+    <h1>Factorization Proof</h1>
+    
+    <section>
+        <h2>Generate Proof</h2>
+        <form id="generateProofForm">
+            <label for="prime1">Prime 1:</label>
+            <input type="number" id="prime1" required><br>
+            <label for="prime2">Prime 2:</label>
+            <input type="number" id="prime2" required><br>
+            <button type="submit">Generate Proof</button>
+        </form>
+        <textarea id="proofOutput" rows="10" cols="50" readonly></textarea>
+    </section>
+
+    <section>
+        <h2>Submit Proof</h2>
+        <form id="submitProofForm">
+            <label for="proof">Proof:</label>
+            <textarea id="proofInput" rows="10" cols="50" required></textarea><br>
+            <button type="submit">Submit Proof</button>
+        </form>
+        <p id="result"></p>
+    </section>
+
+    <script src="../node_modules/snarkjs/build/snarkjs.min.js"></script>
+    <script>
+        document.getElementById('generateProofForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const prime1 = parseInt(document.getElementById('prime1').value);
+            const prime2 = parseInt(document.getElementById('prime2').value);
+
+            console.log('Prime 1:', prime1);
+            console.log('Prime 2:', prime2);
+
+           
+
+            const input = { a: prime1, b: prime2 };
+            try {
+                const { proof, publicSignals } = await snarkjs.plonk.fullProve(input, "circuit.wasm", "circuit_final.zkey");
+                console.log('Proof generated:', proof);
+                console.log('Public Signals:', publicSignals);
+
+                const proofData = {
+                    proof: proof,
+                    publicSignals: publicSignals
+                };
+                
+                document.getElementById('proofOutput').value = JSON.stringify(proofData, null, 2);
+            } catch (error) {
+                console.error('Error generating proof:', error);
+                document.getElementById('proofOutput').value = 'Input does not satisfy the circuit';
+            }
+        });
+
+        document.getElementById('submitProofForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const proofInput = document.getElementById('proofInput').value;
+
+            try {
+                const proofData = JSON.parse(proofInput);
+                const response = await fetch('/verify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(proofData)
+                });
+
+                const result = await response.json();
+                console.log('Verification result:', result);
+                document.getElementById('result').innerText = result.verified ? 'Proof verified!' : 'Invalid proof.';
+            } catch (error) {
+                console.error('Error submitting proof:', error);
+                document.getElementById('result').innerText = 'Error submitting proof. Check console for details.';
+            }
+        });
+    </script>
+</body>
+</html>
